@@ -1,4 +1,3 @@
-#region Namespaces
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,43 +8,16 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using Autodesk.Revit.UI.Selection;
-using Application = Autodesk.Revit.ApplicationServices.Application;
-
-#endregion
 
 namespace Task_1
 {
     [Transaction(TransactionMode.Manual)]
     public class Command : IExternalCommand
     {
-        public Result Execute(
-          ExternalCommandData commandData,
-          ref string message,
-          ElementSet elements)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIApplication uiapp = commandData.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Application app = uiapp.Application;
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
-
-            // Access current selection
-
-            Selection sel = uidoc.Selection;
-
-            // Retrieve elements from database
-
-            FilteredElementCollector col
-              = new FilteredElementCollector(doc)
-                .WhereElementIsNotElementType()
-                .OfCategory(BuiltInCategory.INVALID)
-                .OfClass(typeof(Wall));
-
-            // Filtered element collector is iterable
-
-            foreach (Element e in col)
-            {
-                Debug.Print(e.Name);
-            }
 
             // Modify document within a transaction
 
@@ -54,9 +26,6 @@ namespace Task_1
                 tx.Start("Transaction Name");
                 tx.Commit();
             }
-
-            // print generic message  
-            MessageBox.Show("Hello from Task_1");
 
             return Result.Succeeded;
         }
