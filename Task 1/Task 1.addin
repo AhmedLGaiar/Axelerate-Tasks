@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Text>Floor Creation</Text>
+    <Description>Floor Creation with Check if curves can construct a curve loop</Description>
+    <Assembly>Task 1/Task 1.dll</Assembly>
+    <FullClassName>Task_1.Command</FullClassName>
+    <ClientId>7271c2f6-a0e7-4ecb-b64e-0deeebd58227</ClientId>
+    <VendorId>Axelerate Task Introduced by Ahmed ELGaiar</VendorId>
+    <VendorDescription>Ahmed ELGaiar - ITI InTake 45</VendorDescription>
+  </AddIn>
+</RevitAddIns>
