@@ -2,10 +2,7 @@
 <RevitAddIns>
 	<AddIn Type="Command">
 		<Text>Proper In-Room Placement</Text>
-		<Description>
-			place the WC family on wall the user pick of the bathroom, the wc family should be
-			in the most far corner in the opposite direction of the bathroom door
-		</Description>
+		<Description>place the WC family on wall the user pick of the bathroom, the wc family should be in the most far corner in the opposite direction of the bathroom door</Description>
 		<Assembly>Task_2/Task_2.dll</Assembly>
 		<FullClassName>Task_2.Command</FullClassName>
 		<ClientId>4d6c0c44-1b03-47b6-88c9-b369f999f33f</ClientId>
