@@ -178,14 +178,16 @@
     </Choose>
     <ItemGroup>
         <Compile Include="Command.cs" />
+        <Compile Include="Helpers\FloorLoopHelper.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
-        <Content Include="Task 1.addin">
+        <Compile Include="Utilities\UserInput.cs" />
+        <Content Include="Task_1.addin">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
     <Target Name="AfterClean">
-        <Delete Files="$(AppData)\Autodesk\REVIT\Addins\$(RevitVersion)\Task 1.addin" />
-        <Delete Files="$(AppData)\Autodesk\REVIT\Addins\$(RevitVersion)\Task 1.dll" />
+        <Delete Files="$(AppData)\Autodesk\REVIT\Addins\$(RevitVersion)\Task_1.addin" />
+        <Delete Files="$(AppData)\Autodesk\REVIT\Addins\$(RevitVersion)\Task_1.dll" />
     </Target>
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
         <Exec Command="if exist &quot;$(AppData)\Autodesk\REVIT\Addins\$(RevitVersion)&quot; xcopy /Y /i &quot;$(TargetDir)$(TargetName).dll&quot; &quot;$(AppData)\Autodesk\REVIT\Addins\$(RevitVersion)\$(ProjectName)\&quot;" />

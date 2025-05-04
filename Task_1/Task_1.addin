@@ -3,7 +3,7 @@
   <AddIn Type="Command">
     <Text>Floor Creation</Text>
     <Description>Floor Creation with Check if curves can construct a curve loop</Description>
-    <Assembly>Task 1/Task 1.dll</Assembly>
+    <Assembly>Task_1/Task_1.dll</Assembly>
     <FullClassName>Task_1.Command</FullClassName>
     <ClientId>7271c2f6-a0e7-4ecb-b64e-0deeebd58227</ClientId>
     <VendorId>Axelerate Task Introduced by Ahmed ELGaiar</VendorId>
