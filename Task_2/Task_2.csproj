@@ -179,9 +179,9 @@
     <ItemGroup>
         <Compile Include="Command.cs" />
         <Compile Include="Data\APPData.cs" />
-        <Compile Include="Data\TransactionName.cs" />
         <Compile Include="Filters\WallSelectionFilter.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
+        <Compile Include="Utilities\FamilyInstanceUtils.cs" />
         <Compile Include="Utilities\GeometryUtilities.cs" />
         <Compile Include="Utilities\RoomUtilities.cs" />
         <Content Include="Task_2.addin">

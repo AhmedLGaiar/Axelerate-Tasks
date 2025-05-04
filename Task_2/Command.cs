@@ -42,17 +42,17 @@ namespace Task_2
                     return Result.Failed;
                 }
 
-                Room bathrooms = RoomUtilities.GetBathroomsAttachedToWall(doc, pickedWall,
+                Room bathroom = RoomUtilities.GetBathroomsAttachedToWall(doc, pickedWall,
                     out List<BoundarySegment> boundarySegmentList);
-                if (bathrooms is null)
+                if (bathroom is null)
                 {
                     TaskDialog.Show("Info", "No bathroom found attached to this wall.");
                     return Result.Failed;
                 }
 
-                Curve selectedCurveInRoom = RoomUtilities.GetWallCurveInsideRoom(boundarySegmentList, pickedWall);
+                Curve selectedCurveInRoom = GeometryUtilities.GetWallCurveInsideRoom(boundarySegmentList, pickedWall);
 
-                FamilyInstance door = RoomUtilities.FindDoorInRoom(doc, bathrooms);
+                FamilyInstance door = RoomUtilities.FindDoorInRoom(doc, bathroom);
                 if (door == null)
                 {
                     TaskDialog.Show("Info", "No door found in the bathroom.");
@@ -60,28 +60,23 @@ namespace Task_2
                 }
 
                 // Get door location point
-                LocationPoint doorLocation = door.Location as LocationPoint;
-                if (doorLocation == null)
-                {
-                    TaskDialog.Show("Error", "Failed to get door location.");
-                    return Result.Failed;
-                }
+                XYZ doorLocation = (door.Location as LocationPoint)?.Point;
 
-                XYZ doorPoint = doorLocation.Point;
+                XYZ wcLocationPoint = GeometryUtilities.FarthestPointFromDoor(doorLocation, selectedCurveInRoom);
 
-                XYZ wcLocationPoint = GeometryUtilities.FarthestPointFromDoor(doorPoint, selectedCurveInRoom);
+                // Get best orientation (away from door)
+                XYZ orientation = GeometryUtilities.GetBestOrientation(bathroom, doorLocation,
+                    selectedCurveInRoom, out XYZ roomCenter);
 
-                using (Transaction tx = new Transaction(doc, TransactionName.PlaceBathRooms))
+                using (Transaction tx = new Transaction(doc, "In-Room Placement"))
                 {
                     tx.Start();
                     if (!wcFamilySymbol.IsActive)
                         wcFamilySymbol.Activate();
 
-                    // Get best orientation (away from door)
-                    XYZ orientation = GeometryUtilities.GetBestOrientation(pickedWall, wcLocationPoint, doorPoint);
-
                     // Place WC inside bathroom, aligned and facing away from door
-                    doc.Create.NewFamilyInstance(wcLocationPoint, wcFamilySymbol, orientation, bathrooms, StructuralType.NonStructural);
+                    FamilyInstance newToilet = doc.Create.NewFamilyInstance(wcLocationPoint, wcFamilySymbol, orientation
+                        , pickedWall, StructuralType.NonStructural);
 
                     tx.Commit();
                 }

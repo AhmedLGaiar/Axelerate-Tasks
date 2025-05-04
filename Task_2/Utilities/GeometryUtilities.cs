@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,20 +20,47 @@ namespace Task_2.Utilities
 
             return (distanceToStart > distanceToEnd) ? start : end;
         }
-        public static XYZ GetBestOrientation(Wall wall, XYZ placementPoint, XYZ doorPoint)
+        public static XYZ GetBestOrientation(Room room, XYZ point, Curve wallCurve, out XYZ roomCentroid)
         {
-            Curve wallCurve = ((LocationCurve)wall.Location).Curve;
-            XYZ wallDirection = (wallCurve.GetEndPoint(1) - wallCurve.GetEndPoint(0)).Normalize();
+            roomCentroid = (room.Location as LocationPoint).Point;
+            XYZ directionVector = roomCentroid - point;
 
-            // Two perpendicular options
-            XYZ facingDir1 = wallDirection.CrossProduct(XYZ.BasisZ).Normalize();
-            XYZ facingDir2 = (-wallDirection).CrossProduct(XYZ.BasisZ).Normalize();
+            if (IsVerticalCurve(wallCurve))
+            {
+                directionVector = new XYZ(Math.Sign(directionVector.X), 0, 0);
+            }
+            else
+            {
+                directionVector = new XYZ(0, Math.Sign(directionVector.Y), 0);
+            }
 
-            // Choose direction that's farthest from door
-            double dist1 = (placementPoint + facingDir1).DistanceTo(doorPoint);
-            double dist2 = (placementPoint + facingDir2).DistanceTo(doorPoint);
+            return directionVector;
+        }
+        public static bool IsVerticalCurve(Curve curve)
+        {
+            return Math.Abs(curve.GetEndPoint(0).X - curve.GetEndPoint(1).X) < 1e-4;
+        }
 
-            return (dist1 > dist2) ? facingDir1 : facingDir2;
+        /// <summary>
+        /// Retrieves the portion of a wall's boundary curve that lies inside the specified room,
+        /// based on the provided boundary segments.
+        /// </summary>
+        /// <param name="boundarySegmentList">
+        /// A list of boundary segments from the room that potentially include the wall.
+        /// </param>
+        /// <param name="wallElement">
+        /// The wall whose interior-facing boundary curve is to be retrieved.
+        /// </param>
+        /// <returns>
+        /// The <see cref="Curve"/> representing the wall's segment inside the room,
+        /// or <c>null</c> if the wall is not found in the boundary segments.
+        /// </returns>
+        public static Curve GetWallCurveInsideRoom(IList<BoundarySegment> boundarySegmentList, Wall wallElement)
+        {
+            BoundarySegment matchingSegment = boundarySegmentList
+                .FirstOrDefault(boundSeg => boundSeg.ElementId == wallElement.Id);
+
+            return matchingSegment?.GetCurve();
         }
     }
 }
