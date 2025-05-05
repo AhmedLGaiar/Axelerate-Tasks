@@ -77,7 +77,6 @@ namespace Task_3
                         .OfClass(typeof(FamilyInstance))
                         .Cast<FamilyInstance>()
                         .ToList();
-
                     foreach (var door in allDoors)
                     {
                         LocationPoint doorLoc = door.Location as LocationPoint;
@@ -85,50 +84,45 @@ namespace Task_3
 
                         ElementId typeId = door.GetTypeId();
                         Element type = doc.GetElement(typeId);
-                        Wall hostWall = doc.GetElement(door.Host.Id) as Wall;
-
+                        Wall hostWall = door.Host as Wall;
                         if (hostWall == null) continue;
-                        XYZ Location = (door.Location as LocationPoint).Point;
-                        double Width = type.get_Parameter(BuiltInParameter.DOOR_WIDTH).AsDouble();
-                        double Depth = hostWall.Width / 2.0;
 
-                        Curve curve = (hostWall.Location as LocationCurve).Curve;
-                        XYZ WallDirection = (curve.GetEndPoint(1) - curve.GetEndPoint(0)).Normalize();
+                        XYZ location = doorLoc.Point;
+                        double width = type.get_Parameter(BuiltInParameter.DOOR_WIDTH).AsDouble();
+                        double depth = hostWall.Width / 2.0;
 
-                        XYZ p1 = Location + WallDirection * Width / 2.0;
-                        XYZ p2 = Location + WallDirection.Negate() * Width / 2.0;
+                        Curve wallCurve = (hostWall.Location as LocationCurve).Curve;
+                        XYZ wallDir = (wallCurve.GetEndPoint(1) - wallCurve.GetEndPoint(0)).Normalize();
+                        XYZ right = wallDir;
+                        XYZ forward = door.FacingOrientation.Normalize();
+                        XYZ up = XYZ.BasisZ;
 
-                        XYZ FaceDirection = door.FacingOrientation;
-                        XYZ roomLocation = (door.Room.Location as LocationPoint).Point;
-                        XYZ fromDoorToRoomCenter = (roomLocation - Location).Normalize();
+                        // Points along the door width
+                        XYZ p1 = location + right * (width / 2);
+                        XYZ p2 = location - right * (width / 2);
 
-                        XYZ p3;
-                        XYZ p4;
-                        if (FaceDirection.DotProduct(fromDoorToRoomCenter) > 0)
+                        // Generate 2 bump-out floors: one on each side
+                        foreach (int dirSign in new[] { 1, -1 }) // +1 = front, -1 = back
                         {
-                            p3 = p2 + FaceDirection * Depth;
-                            p4 = p1 + FaceDirection * Depth;
+                            XYZ offset = forward * depth * dirSign;
+
+                            XYZ q1 = p1 + offset;
+                            XYZ q2 = p2 + offset;
+
+                            Line l1 = Line.CreateBound(p1, p2);
+                            Line l2 = Line.CreateBound(p2, q2);
+                            Line l3 = Line.CreateBound(q2, q1);
+                            Line l4 = Line.CreateBound(q1, p1);
+
+                            CurveLoop loop = new CurveLoop();
+                            loop.Append(l1);
+                            loop.Append(l2);
+                            loop.Append(l3);
+                            loop.Append(l4);
+
+                            Floor.Create(doc, new List<CurveLoop> { loop }, genericFloor.Id, hostWall.LevelId);
                         }
-                        else
-                        {
-                            p3 = p2 - FaceDirection * Depth;
-                            p4 = p1 - FaceDirection * Depth;
-                        }
-
-                        Line line1 = Line.CreateBound(p1, p2);
-                        Line line2 = Line.CreateBound(p2, p3);
-                        Line line3 = Line.CreateBound(p3, p4);
-                        Line line4 = Line.CreateBound(p4, p1);
-
-                        CurveLoop curves = new CurveLoop();
-                        curves.Append(line1);
-                        curves.Append(line2);
-                        curves.Append(line3);
-                        curves.Append(line4);
-
-                        Floor.Create(doc, new List<CurveLoop> { curves }, genericFloor.Id, level.Id);
                     }
-
 
                     tx.Commit();
                 }
