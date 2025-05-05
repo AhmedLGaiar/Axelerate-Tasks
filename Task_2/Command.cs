@@ -71,11 +71,16 @@ namespace Task_2
                 {
                     tx.Start();
                     if (!wcFamilySymbol.IsActive)
+                    {
                         wcFamilySymbol.Activate();
+                        doc.Regenerate();
+                    }
 
                     // Place WC inside bathroom, aligned and facing away from door
                     FamilyInstance newToilet = doc.Create.NewFamilyInstance(wcLocationPoint, wcFamilySymbol, orientation
                         , pickedWall, StructuralType.NonStructural);
+
+                    doc.Regenerate();
 
                     FamilyInstanceUtils.FamilyOrientationHandler(doc, newToilet, orientation, selectedCurveInRoom,
                         wcLocationPoint, roomCenter);

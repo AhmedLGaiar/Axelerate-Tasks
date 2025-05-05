@@ -178,6 +178,7 @@
     </Choose>
     <ItemGroup>
         <Compile Include="Command.cs" />
+        <Compile Include="Data\APPData.cs" />
         <Compile Include="Helpers\FloorLoopHelper.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="Utilities\UserInput.cs" />

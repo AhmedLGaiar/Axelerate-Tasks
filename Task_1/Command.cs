@@ -6,6 +6,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Task_1.Utilities;
 using Task_1.Helpers;
+using Task_1.Data;
 
 namespace Task_1
 {
@@ -14,8 +15,9 @@ namespace Task_1
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIDocument uidoc = commandData.Application.ActiveUIDocument;
-            Document doc = uidoc.Document;
+            APPData.Initialize(commandData.Application);
+            Document doc = APPData.Current.Doc;
+            UIDocument uidoc = APPData.Current.UIDoc;
             try
             {
                 FloorType floorType = new FilteredElementCollector(doc)
