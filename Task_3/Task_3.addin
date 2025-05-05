@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Text>Threshold Add-in</Text>
+    <Description>simple command add-in that make threshold for room</Description>
+    <Assembly>Task_3/Task_3.dll</Assembly>
+    <FullClassName>Task_3.Command</FullClassName>
+    <ClientId>7b85b995-4430-447f-bcbe-bbd68b75fbf6</ClientId>
+    <VendorId>Axelerate Task Introduced by Ahmed ELGaiar</VendorId>
+    <VendorDescription>Ahmed ELGaiar - ITI InTake 45</VendorDescription>
+  </AddIn>
+</RevitAddIns>
