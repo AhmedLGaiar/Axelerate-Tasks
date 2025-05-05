@@ -3,9 +3,6 @@ using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Autodesk.Revit.UI;
-using Autodesk.Windows;
-using Task_2.Data;
 
 namespace Task_2.Utilities
 {
