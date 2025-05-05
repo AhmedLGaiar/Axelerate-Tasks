@@ -38,7 +38,7 @@ namespace Task_2.Utilities
         }
         public static bool IsVerticalCurve(Curve curve)
         {
-            return Math.Abs(curve.GetEndPoint(0).X - curve.GetEndPoint(1).X) < 1e-4;
+            return Math.Abs(curve.GetEndPoint(0).X - curve.GetEndPoint(1).X) < 0.001;
         }
 
         /// <summary>

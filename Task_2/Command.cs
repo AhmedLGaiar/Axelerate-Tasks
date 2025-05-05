@@ -35,7 +35,6 @@ namespace Task_2
                     .OfCategory(BuiltInCategory.OST_GenericModel)
                     .Cast<FamilySymbol>()
                     .FirstOrDefault(f => f.Name == "ADA");
-
                 if (wcFamilySymbol == null)
                 {
                     TaskDialog.Show("Warning", "FamilySymbol 'ADA' was not found in the project.");
@@ -65,7 +64,7 @@ namespace Task_2
                 XYZ wcLocationPoint = GeometryUtilities.FarthestPointFromDoor(doorLocation, selectedCurveInRoom);
 
                 // Get best orientation (away from door)
-                XYZ orientation = GeometryUtilities.GetBestOrientation(bathroom, doorLocation,
+                XYZ orientation = GeometryUtilities.GetBestOrientation(bathroom, wcLocationPoint,
                     selectedCurveInRoom, out XYZ roomCenter);
 
                 using (Transaction tx = new Transaction(doc, "In-Room Placement"))
@@ -78,6 +77,8 @@ namespace Task_2
                     FamilyInstance newToilet = doc.Create.NewFamilyInstance(wcLocationPoint, wcFamilySymbol, orientation
                         , pickedWall, StructuralType.NonStructural);
 
+                    FamilyInstanceUtils.FamilyOrientationHandler(doc, newToilet, orientation, selectedCurveInRoom,
+                        wcLocationPoint, roomCenter);
                     tx.Commit();
                 }
 
