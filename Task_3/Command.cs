@@ -5,6 +5,7 @@ using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Task_3.Data;
 
 namespace Task_3
 {
@@ -13,8 +14,9 @@ namespace Task_3
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIApplication uiApp = commandData.Application;
-            Document doc = uiApp.ActiveUIDocument.Document;
+            APPData.Initialize(commandData.Application);
+            Document doc = APPData.Current.Doc;
+            UIDocument uidoc = APPData.Current.UIDoc;
 
             try
             {
