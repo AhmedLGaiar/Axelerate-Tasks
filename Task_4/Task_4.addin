@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+	<AddIn Type="Command">
+		<Text>Framing Wall</Text>
+		<Description>Some description for Task_4</Description>
+		<Assembly>Task_4/Task_4.dll</Assembly>
+		<FullClassName>Task_4.Command</FullClassName>
+		<ClientId>2a4fd058-80ca-4341-8d84-516ec0b471f9</ClientId>
+		<VendorId>Axelerate Task Introduced by Ahmed ELGaiar</VendorId>
+		<VendorDescription>Ahmed ELGaiar - ITI InTake 45</VendorDescription>
+	</AddIn>
+</RevitAddIns>
+<?xml version="1.0" encoding="utf-8"?>
