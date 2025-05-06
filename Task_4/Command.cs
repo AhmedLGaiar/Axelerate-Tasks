@@ -90,12 +90,12 @@ namespace Task_4
         }
 
         private void DrawVerticalLinesAtIntervals(
-            Document doc,
-            SketchPlane sketchPlane,
-            Curve wallCurve,
-            double wallHeight,
-            double intervalInFeet,
-            Wall pickedWall)
+           Document doc,
+           SketchPlane sketchPlane,
+           Curve wallCurve,
+           double wallHeight,
+           double intervalInFeet,
+           Wall pickedWall)
         {
             double interval = UnitUtils.ConvertToInternalUnits(intervalInFeet, UnitTypeId.Feet);
             double wallLength = wallCurve.Length;
@@ -103,53 +103,121 @@ namespace Task_4
             XYZ direction = (wallCurve.GetEndPoint(1) - wallCurve.GetEndPoint(0)).Normalize();
             XYZ startPoint = wallCurve.GetEndPoint(0);
 
-            // Get bounding boxes of door/window openings
-            List<BoundingBoxXYZ> openings = new FilteredElementCollector(doc)
+            // Get the plane normal and origin
+            XYZ planeNormal = sketchPlane.GetPlane().Normal;
+            XYZ planeOrigin = sketchPlane.GetPlane().Origin;
+
+            // Get all door and window openings hosted by the wall
+            var openings = new FilteredElementCollector(doc)
                 .WherePasses(new ElementClassFilter(typeof(FamilyInstance)))
-                .WhereElementIsNotElementType()
-                .Where(e => e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Doors ||
-                            e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Windows)
+                .WherePasses(new ElementCategoryFilter(BuiltInCategory.OST_Doors))
+                .Concat(new FilteredElementCollector(doc)
+                    .WherePasses(new ElementClassFilter(typeof(FamilyInstance)))
+                    .WherePasses(new ElementCategoryFilter(BuiltInCategory.OST_Windows)))
                 .Cast<FamilyInstance>()
                 .Where(f => f.Host?.Id == pickedWall.Id)
-                .Select(f => f.get_BoundingBox(null))
-                .Where(bb => bb != null)
+                .Select(f => new {
+                    BoundingBox = f.get_BoundingBox(null),
+                    Instance = f,
+                    IsDoor = f.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Doors
+                })
+                .Where(x => x.BoundingBox != null)
                 .ToList();
 
+            // First pass: Draw all regular vertical lines, skipping openings
             for (int i = 1; i <= intervals; i++)
             {
                 XYZ pointOnWall = startPoint + direction * (interval * i);
-                XYZ basePoint = pointOnWall;
-                XYZ topPoint = basePoint + XYZ.BasisZ * wallHeight;
 
-                // Check if point intersects any opening in X/Y, and get top Z of opening
-                BoundingBoxXYZ intersectingOpening = openings.FirstOrDefault(bbox =>
+                // Project the point onto the sketch plane
+                XYZ projectedPoint = ProjectPointToPlane(pointOnWall, planeNormal, planeOrigin);
+
+                bool isInsideOpening = openings.Any(opening =>
                 {
-                    XYZ min = bbox.Min;
-                    XYZ max = bbox.Max;
-
-                    return pointOnWall.X >= min.X && pointOnWall.X <= max.X &&
-                           pointOnWall.Y >= min.Y && pointOnWall.Y <= max.Y;
+                    XYZ min = opening.BoundingBox.Min;
+                    XYZ max = opening.BoundingBox.Max;
+                    return pointOnWall.X > min.X && pointOnWall.X < max.X &&
+                           pointOnWall.Y > min.Y && pointOnWall.Y < max.Y;
                 });
 
-                if (intersectingOpening != null)
+                if (!isInsideOpening)
                 {
-                    // Draw only above the opening
-                    double openingTopZ = intersectingOpening.Max.Z;
-                    if (openingTopZ < topPoint.Z)
-                    {
-                        Line aboveOpening = Line.CreateBound(
-                            new XYZ(basePoint.X, basePoint.Y, openingTopZ),
-                            new XYZ(topPoint.X, topPoint.Y, topPoint.Z));
-                        doc.Create.NewModelCurve(aboveOpening, sketchPlane);
-                    }
-                }
-                else
-                {
-                    // No opening, draw full height
-                    Line fullStud = Line.CreateBound(basePoint, topPoint);
-                    doc.Create.NewModelCurve(fullStud, sketchPlane);
+                    XYZ topPoint = projectedPoint + XYZ.BasisZ * wallHeight;
+                    Line verticalLine = Line.CreateBound(projectedPoint, topPoint);
+                    doc.Create.NewModelCurve(verticalLine, sketchPlane);
                 }
             }
+
+            // Second pass: Draw boundary lines around openings
+            foreach (var opening in openings)
+            {
+                XYZ min = opening.BoundingBox.Min;
+                XYZ max = opening.BoundingBox.Max;
+
+                // Project all points to the sketch plane
+                XYZ minProjected = ProjectPointToPlane(min, planeNormal, planeOrigin);
+                XYZ maxProjected = ProjectPointToPlane(max, planeNormal, planeOrigin);
+
+                // For doors only: skip the bottom line
+                if (opening.IsDoor)
+                {
+                    // Top boundary line (horizontal)
+                    XYZ topStart = new XYZ(minProjected.X, minProjected.Y, maxProjected.Z);
+                    XYZ topEnd = new XYZ(maxProjected.X, maxProjected.Y, maxProjected.Z);
+                    Line topLine = Line.CreateBound(topStart, topEnd);
+                    doc.Create.NewModelCurve(topLine, sketchPlane);
+
+                    // Left boundary line (vertical)
+                    XYZ leftBottom = new XYZ(minProjected.X, minProjected.Y, minProjected.Z);
+                    XYZ leftTop = new XYZ(minProjected.X, minProjected.Y, maxProjected.Z);
+                    Line leftLine = Line.CreateBound(leftBottom, leftTop);
+                    doc.Create.NewModelCurve(leftLine, sketchPlane);
+
+                    // Right boundary line (vertical)
+                    XYZ rightBottom = new XYZ(maxProjected.X, maxProjected.Y, minProjected.Z);
+                    XYZ rightTop = new XYZ(maxProjected.X, maxProjected.Y, maxProjected.Z);
+                    Line rightLine = Line.CreateBound(rightBottom, rightTop);
+                    doc.Create.NewModelCurve(rightLine, sketchPlane);
+                }
+                else // For windows: draw all boundary lines
+                {
+                    // Top boundary line (horizontal)
+                    XYZ topStart = new XYZ(minProjected.X, minProjected.Y, maxProjected.Z);
+                    XYZ topEnd = new XYZ(maxProjected.X, maxProjected.Y, maxProjected.Z);
+                    Line topLine = Line.CreateBound(topStart, topEnd);
+                    doc.Create.NewModelCurve(topLine, sketchPlane);
+
+                    // Bottom boundary line (horizontal)
+                    XYZ bottomStart = new XYZ(minProjected.X, minProjected.Y, minProjected.Z);
+                    XYZ bottomEnd = new XYZ(maxProjected.X, maxProjected.Y, minProjected.Z);
+                    Line bottomLine = Line.CreateBound(bottomStart, bottomEnd);
+                    doc.Create.NewModelCurve(bottomLine, sketchPlane);
+
+                    // Left boundary line (vertical)
+                    XYZ leftBottom = new XYZ(minProjected.X, minProjected.Y, minProjected.Z);
+                    XYZ leftTop = new XYZ(minProjected.X, minProjected.Y, maxProjected.Z);
+                    Line leftLine = Line.CreateBound(leftBottom, leftTop);
+                    doc.Create.NewModelCurve(leftLine, sketchPlane);
+
+                    // Right boundary line (vertical)
+                    XYZ rightBottom = new XYZ(maxProjected.X, maxProjected.Y, minProjected.Z);
+                    XYZ rightTop = new XYZ(maxProjected.X, maxProjected.Y, maxProjected.Z);
+                    Line rightLine = Line.CreateBound(rightBottom, rightTop);
+                    doc.Create.NewModelCurve(rightLine, sketchPlane);
+                }
+            }
+        }
+
+        private XYZ ProjectPointToPlane(XYZ point, XYZ planeNormal, XYZ planeOrigin)
+        {
+            // Vector from plane origin to point
+            XYZ vector = point - planeOrigin;
+
+            // Distance from point to plane along normal
+            double distance = vector.DotProduct(planeNormal);
+
+            // Projected point
+            return point - distance * planeNormal;
         }
     }
 }
