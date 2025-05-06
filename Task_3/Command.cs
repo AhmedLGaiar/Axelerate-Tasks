@@ -48,16 +48,14 @@ namespace Task_3
                     .Where(r => r.Area > 1)
                     .ToList();
 
-                using (Transaction tx = new Transaction(doc, "Create Floors with Merged Thresholds"))
+                using (Transaction tx = new Transaction(doc, "Create Floors with Thresholds"))
                 {
                     tx.Start();
 
-                    // Collect all temporary solids to delete later
                     List<ElementId> tempSolids = new List<ElementId>();
 
                     foreach (var room in rooms)
                     {
-                        // 1. Create room solid
                         IList<IList<BoundarySegment>> boundaries = room.GetBoundarySegments(options);
                         if (boundaries == null || boundaries.Count == 0) continue;
 
@@ -73,8 +71,9 @@ namespace Task_3
                             XYZ.BasisZ.Negate(),
                             floorThickness);
 
-                        // 2. Create threshold solids for doors in this room
                         List<Solid> thresholdSolids = new List<Solid>();
+                        XYZ roomCenter = (room.Location as LocationPoint).Point;
+
                         var roomDoors = new FilteredElementCollector(doc)
                             .OfCategory(BuiltInCategory.OST_Doors)
                             .WhereElementIsNotElementType()
@@ -92,14 +91,12 @@ namespace Task_3
 
                         foreach (var door in roomDoors)
                         {
-                            LocationPoint doorLoc = door.Location as LocationPoint;
-                            if (doorLoc == null) continue;
+                            if (!(door.Location is LocationPoint doorLoc)) continue;
 
                             Wall hostWall = door.Host as Wall;
                             if (hostWall == null) continue;
 
-                            ElementId typeId = door.GetTypeId();
-                            Element type = doc.GetElement(typeId);
+                            Element type = doc.GetElement(door.GetTypeId());
                             double width = type.get_Parameter(BuiltInParameter.DOOR_WIDTH).AsDouble();
                             double depth = hostWall.Width / 2.0;
 
@@ -109,12 +106,15 @@ namespace Task_3
                             XYZ forward = door.FacingOrientation.Normalize();
                             XYZ location = doorLoc.Point;
 
-                            // Points along the door width
+                            // Decide threshold side (into the room)
+                            XYZ doorToRoom = roomCenter - location;
+                            bool facesRoom = forward.DotProduct(doorToRoom) > 0;
+                            int direction = facesRoom ? 1 : -1;
+
+                            XYZ offset = forward * depth * direction;
+
                             XYZ p1 = location + right * (width / 2);
                             XYZ p2 = location - right * (width / 2);
-
-                            // Generate threshold geometry (only front side)
-                            XYZ offset = forward * depth;
                             XYZ q1 = p1 + offset;
                             XYZ q2 = p2 + offset;
 
@@ -132,7 +132,7 @@ namespace Task_3
                             thresholdSolids.Add(thresholdSolid);
                         }
 
-                        // 3. Combine all solids
+                        // Merge threshold solids into the room solid
                         Solid combinedSolid = roomSolid;
                         foreach (var thresholdSolid in thresholdSolids)
                         {
@@ -143,15 +143,14 @@ namespace Task_3
                                     thresholdSolid,
                                     BooleanOperationsType.Union);
                             }
-                            catch { /* Ignore union failures */ }
+                            catch { }
                         }
 
-                        // 4. Create direct shape for visualization (temporary)
+                        // Optional visual check — remove later
                         DirectShape ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel));
                         ds.SetShape(new List<GeometryObject> { combinedSolid });
                         tempSolids.Add(ds.Id);
 
-                        // 5. Get the bottom face of the combined solid for floor creation
                         PlanarFace bottomFace = null;
                         foreach (Face face in combinedSolid.Faces)
                         {
@@ -165,7 +164,6 @@ namespace Task_3
 
                         if (bottomFace != null)
                         {
-                            // 6. Get the edge loops from the bottom face
                             List<CurveLoop> floorLoops = new List<CurveLoop>();
                             foreach (EdgeArray loop in bottomFace.EdgeLoops)
                             {
@@ -177,7 +175,6 @@ namespace Task_3
                                 floorLoops.Add(curveLoop);
                             }
 
-                            // 7. Create the actual floor
                             if (floorLoops.Count > 0)
                             {
                                 Floor.Create(doc, floorLoops, genericFloor.Id, level.Id);
@@ -185,9 +182,7 @@ namespace Task_3
                         }
                     }
 
-                    // Delete all temporary solids
                     doc.Delete(tempSolids);
-
                     tx.Commit();
                 }
 
