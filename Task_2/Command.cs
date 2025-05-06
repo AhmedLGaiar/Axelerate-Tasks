@@ -25,9 +25,8 @@ namespace Task_2
             try
             {
                 // force user to picks a wall only
-                WallSelectionFilter wallFilter = new WallSelectionFilter();
                 Reference pickedRef =
-                    uidoc.Selection.PickObject(ObjectType.Element, wallFilter, "Pick a bathroom wall");
+                    uidoc.Selection.PickObject(ObjectType.Element, new WallSelectionFilter(), "Pick a bathroom wall");
                 Wall pickedWall = doc.GetElement(pickedRef) as Wall;
 
                 FamilySymbol wcFamilySymbol = new FilteredElementCollector(doc)
