@@ -10,6 +10,7 @@ namespace Task_4.Utilities
     {
         static double studThickness = UnitUtils.ConvertToInternalUnits(0.15, UnitTypeId.Meters); // ~15 cm
         static double studSpacing = UnitUtils.ConvertToInternalUnits(2.0, UnitTypeId.Feet);       // 2 feet
+
         internal static void FrameWall(Document doc, Wall wall, Solid solid, Face face, XYZ normal, IList<CurveLoop> loops)
         {
             LocationCurve lc = wall.Location as LocationCurve;
@@ -17,26 +18,26 @@ namespace Task_4.Utilities
             XYZ wallDir = (wallCurve.GetEndPoint(1) - wallCurve.GetEndPoint(0)).Normalize();
             double wallWidth = wall.Width;
 
-            // Vertical studs
+            // Vertical lines
             int count = (int)(wallCurve.Length / studSpacing);
             for (int i = 1; i < count; i++)
             {
                 double param = i * studSpacing / wallCurve.Length;
                 XYZ mid = wallCurve.Evaluate(param, true);
-                PlaceVerticalStud(doc, solid, mid, normal, wallDir, wallWidth);
+                PlaceVerticalLine(doc, solid, mid);
             }
 
-            // Top and bottom plates
+            // Top and bottom plates (single lines)
             Transform sideOffset = Transform.CreateTranslation(normal * wallWidth * 0.5);
             Curve wallOnFace = wallCurve.CreateTransformed(sideOffset);
 
-            CreateDoubleLine(doc, wallOnFace, normal, XYZ.BasisZ * studThickness); // bottom plate
-            CreateDoubleLine(doc, wallOnFace.CreateTransformed(Transform.CreateTranslation(XYZ.BasisZ * wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).AsDouble())), normal, XYZ.BasisZ * studThickness); // top plate
+            CreateLine(doc, wallOnFace, normal); // bottom plate
+            CreateLine(doc, wallOnFace.CreateTransformed(Transform.CreateTranslation(XYZ.BasisZ * wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).AsDouble())), normal); // top plate
 
-            // Outer studs
+            // Border lines
             foreach (Curve c in loops[0])
             {
-                if (!IsBottomEdge(c)) CreateDoubleLine(doc, c, normal, normal.CrossProduct((c.GetEndPoint(1) - c.GetEndPoint(0)).Normalize()) * studThickness);
+                if (!IsBottomEdge(c)) CreateLine(doc, c, normal);
             }
 
             // Openings (door/window)
@@ -48,7 +49,7 @@ namespace Task_4.Utilities
             }
         }
 
-        private static void PlaceVerticalStud(Document doc, Solid solid, XYZ point, XYZ normal, XYZ dir, double width)
+        private static void PlaceVerticalLine(Document doc, Solid solid, XYZ point)
         {
             XYZ bottom = point - XYZ.BasisZ * 100;
             XYZ top = point + XYZ.BasisZ * 100;
@@ -64,8 +65,7 @@ namespace Task_4.Utilities
                 XYZ end = seg.GetEndPoint(1) - (seg.GetEndPoint(1) - seg.GetEndPoint(0)).Normalize() * studThickness;
                 Curve trimmed = Line.CreateBound(start, end);
 
-                Curve moved = trimmed.CreateTransformed(Transform.CreateTranslation(normal * width * 0.5));
-                CreateDoubleLine(doc, moved, normal, dir * studThickness * 0.5);
+                CreateLine(doc, trimmed, XYZ.BasisX); // any arbitrary normal (not used for offset now)
             }
         }
 
@@ -87,16 +87,8 @@ namespace Task_4.Utilities
                 if (isDoor && i == bottomIdx) continue;
                 if (IsBottomEdge(curves[i])) continue;
 
-                XYZ dir = (curves[i].GetEndPoint(1) - curves[i].GetEndPoint(0)).Normalize();
-                XYZ offset = normal.CrossProduct(dir) * studThickness;
-                CreateDoubleLine(doc, curves[i], normal, offset);
+                CreateLine(doc, curves[i], normal);
             }
-        }
-
-        private static void CreateDoubleLine(Document doc, Curve baseCurve, XYZ normal, XYZ offset)
-        {
-            CreateLine(doc, baseCurve, normal);
-            CreateLine(doc, baseCurve.CreateTransformed(Transform.CreateTranslation(offset)), normal);
         }
 
         private static void CreateLine(Document doc, Curve c, XYZ normal)
@@ -125,12 +117,6 @@ namespace Task_4.Utilities
         {
             double z1 = c.GetEndPoint(0).Z, z2 = c.GetEndPoint(1).Z;
             return Math.Abs(z1 - z2) < 1e-3 && (z1 + z2) / 2 < 1.0;
-        }
-
-        private class WallFilter : ISelectionFilter
-        {
-            public bool AllowElement(Element elem) => elem is Wall;
-            public bool AllowReference(Reference reference, XYZ position) => true;
         }
     }
 }
