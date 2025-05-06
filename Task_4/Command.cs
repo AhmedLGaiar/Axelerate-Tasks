@@ -1,17 +1,16 @@
-#region Namespaces
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using Autodesk.Revit.UI.Selection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows;
 using Application = Autodesk.Revit.ApplicationServices.Application;
-
-#endregion
 
 namespace Task_4
 {
@@ -20,42 +19,27 @@ namespace Task_4
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIApplication uiapp = commandData.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Application app = uiapp.Application;
-            Document doc = uidoc.Document;
+            UIApplication uiApp = commandData.Application;
+            Document doc = uiApp.ActiveUIDocument.Document;
 
-            // Access current selection
-
-            Selection sel = uidoc.Selection;
-
-            // Retrieve elements from database
-
-            FilteredElementCollector col
-              = new FilteredElementCollector(doc)
-                .WhereElementIsNotElementType()
-                .OfCategory(BuiltInCategory.INVALID)
-                .OfClass(typeof(Wall));
-
-            // Filtered element collector is iterable
-
-            foreach (Element e in col)
+            try
             {
-                Debug.Print(e.Name);
+                using (Transaction tx = new Transaction(doc, "Create Framing Wall"))
+                {
+                    tx.Start();
+
+
+                    tx.Commit();
+                }
+
+                return Result.Succeeded;
             }
-
-            // Modify document within a transaction
-
-            using (Transaction tx = new Transaction(doc))
+            catch (Exception ex)
             {
-                tx.Start("Transaction Name");
-                tx.Commit();
+                message = ex.Message;
+                TaskDialog.Show("Error", ex.Message);
+                return Result.Failed;
             }
-
-            // print generic message  
-            MessageBox.Show("Hello from Task_4");
-
-            return Result.Succeeded;
         }
     }
 }
