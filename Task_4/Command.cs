@@ -4,6 +4,8 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Task_2.Filters;
 
 namespace Task_4
@@ -20,7 +22,8 @@ namespace Task_4
             try
             {
                 // Force user to pick a wall only
-                Reference pickedRef = uidoc.Selection.PickObject(ObjectType.Element, new WallSelectionFilter(), "Pick a bathroom wall");
+                Reference pickedRef = uidoc.Selection.PickObject(ObjectType.Element, new WallSelectionFilter(),
+                    "Pick a bathroom wall");
                 Wall pickedWall = doc.GetElement(pickedRef) as Wall;
 
                 // Get the wall's location curve
@@ -51,7 +54,7 @@ namespace Task_4
                     DrawWallBoundaryLines(doc, sketchPlane, wallCurve, wallHeight);
 
                     // Draw vertical lines at 2-foot intervals
-                    DrawVerticalLinesAtIntervals(doc, sketchPlane, wallCurve, wallHeight, 2.0);
+                    DrawVerticalLinesAtIntervals(doc, sketchPlane, wallCurve, wallHeight, 2.0, pickedWall);
 
                     tx.Commit();
                 }
@@ -86,18 +89,66 @@ namespace Task_4
             doc.Create.NewModelCurve(endVertical, sketchPlane);
         }
 
-        private void DrawVerticalLinesAtIntervals(Document doc, SketchPlane sketchPlane, Curve wallCurve, double wallHeight, double intervalInFeet)
+        private void DrawVerticalLinesAtIntervals(
+            Document doc,
+            SketchPlane sketchPlane,
+            Curve wallCurve,
+            double wallHeight,
+            double intervalInFeet,
+            Wall pickedWall)
         {
             double interval = UnitUtils.ConvertToInternalUnits(intervalInFeet, UnitTypeId.Feet);
             double wallLength = wallCurve.Length;
             int intervals = (int)Math.Floor(wallLength / interval);
             XYZ direction = (wallCurve.GetEndPoint(1) - wallCurve.GetEndPoint(0)).Normalize();
+            XYZ startPoint = wallCurve.GetEndPoint(0);
+
+            // Get bounding boxes of door/window openings
+            List<BoundingBoxXYZ> openings = new FilteredElementCollector(doc)
+                .WherePasses(new ElementClassFilter(typeof(FamilyInstance)))
+                .WhereElementIsNotElementType()
+                .Where(e => e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Doors ||
+                            e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Windows)
+                .Cast<FamilyInstance>()
+                .Where(f => f.Host?.Id == pickedWall.Id)
+                .Select(f => f.get_BoundingBox(null))
+                .Where(bb => bb != null)
+                .ToList();
 
             for (int i = 1; i <= intervals; i++)
             {
-                XYZ pointOnWall = wallCurve.GetEndPoint(0) + direction * (interval * i);
-                Line verticalLine = Line.CreateBound(pointOnWall, pointOnWall + XYZ.BasisZ * wallHeight);
-                doc.Create.NewModelCurve(verticalLine, sketchPlane);
+                XYZ pointOnWall = startPoint + direction * (interval * i);
+                XYZ basePoint = pointOnWall;
+                XYZ topPoint = basePoint + XYZ.BasisZ * wallHeight;
+
+                // Check if point intersects any opening in X/Y, and get top Z of opening
+                BoundingBoxXYZ intersectingOpening = openings.FirstOrDefault(bbox =>
+                {
+                    XYZ min = bbox.Min;
+                    XYZ max = bbox.Max;
+
+                    return pointOnWall.X >= min.X && pointOnWall.X <= max.X &&
+                           pointOnWall.Y >= min.Y && pointOnWall.Y <= max.Y;
+                });
+
+                if (intersectingOpening != null)
+                {
+                    // Draw only above the opening
+                    double openingTopZ = intersectingOpening.Max.Z;
+                    if (openingTopZ < topPoint.Z)
+                    {
+                        Line aboveOpening = Line.CreateBound(
+                            new XYZ(basePoint.X, basePoint.Y, openingTopZ),
+                            new XYZ(topPoint.X, topPoint.Y, topPoint.Z));
+                        doc.Create.NewModelCurve(aboveOpening, sketchPlane);
+                    }
+                }
+                else
+                {
+                    // No opening, draw full height
+                    Line fullStud = Line.CreateBound(basePoint, topPoint);
+                    doc.Create.NewModelCurve(fullStud, sketchPlane);
+                }
             }
         }
     }
